@@ -1,13 +1,5 @@
 local dir = require "memfs.dir"
-local r0 = dir(true)
-
-print("rootfs", r0)
-local foo = r0:mkdir("foo")
-print("foo", r0 "foo", foo)
-
-r0:mkdir("bar")
-print("bar", r0 "bar")
-r0"bar":mkdir("rrr")
+local r0 = dir(true) -- the root directory (usualy asked "/")
 
 local function printdir(k,v, pdir)
 	pdir=pdir or ""
@@ -20,14 +12,47 @@ local function rprint(k,v, pdir)
 	end
 end
 
---r0:all(printdir, "")
+
+r0:mkdir"foo"		-- /foo
+r0:mkdir"bar"		-- /bar
+r0"bar":mkdir"rrr"	-- /bar/rrr
+
+--[[
+assert(r0 "."  == r0)
+assert(r0 ".." == r0)
+
+assert(r0 "foo" "."  == r0 "foo")
+assert(r0 "foo" ".." == r0)
+
+assert(r0 "bar" "."  == r0 "bar")
+assert(r0 "bar" ".." == r0)
+
+assert(r0 "bar" "rrr" "."  == r0 "bar" "rrr")
+assert(r0 "bar" "rrr" ".." == r0 "bar")
+]]--
+
+--
+
+assert(r0/"."  == r0 ".")
+do	local name = "."
+	assert(r0/name == r0(name))
+end
+assert(r0/"."  == r0)
+assert(r0/".." == r0)
+
+assert(r0/"foo"/"."  == r0 "foo")
+assert(r0/"foo"/".." == r0)
+
+assert(r0/"bar"/"."  == r0 "bar")
+assert(r0/"bar"/".." == r0)
+
+assert(r0/"bar"/"rrr"/"."  == r0 "bar" "rrr")
+assert(r0/"bar"/"rrr"/".." == r0 "bar")
+
 
 r0:all(rprint, "")
 print("rmdir rrr")
 r0("bar"):rmdir("rrr")
 r0:all(rprint, "")
 
-assert(r0".."==r0)
-assert(r0"."==r0)
-assert(r0"foo"==r0"foo" ".")
-assert(r0"foo" ".." == r0)
+print("OK")

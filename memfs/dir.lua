@@ -51,7 +51,7 @@ end
 
 function dir:destroy() -- __gc ?
 	self:unhardlink("..")
-	self:unhardlink(".")
+	self:unhardlink(".") -- useless ?
 end
 
 function dir:all(f, ...)
@@ -74,8 +74,11 @@ function dir:__call(name)
 	return self.tree[name]
 end
 
+dir.__div = dir.__call
+
 function dir:__pairs()
 	return pairs(self.tree)
 end
+
 
 return setmetatable({}, {__call = function(_, ...) return instance(dir, ...) end})
