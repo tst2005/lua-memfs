@@ -1,4 +1,4 @@
-local node = require "memfs.node"
+local node = require "memfs.node-orig"
 local r0 = node(true) -- the root directory (usualy asked "/")
 
 local function printdir(k,v, pdir)
