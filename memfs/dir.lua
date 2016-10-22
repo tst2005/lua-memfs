@@ -26,14 +26,15 @@ local dir;dir = class("dir", {
 
 -- create a hardlink of <what> named <name> into <self>
 function dir:hardlink(name, what)
-	if not self:isfile() not self.tree[name] then
+	if not self:isfile() and not self.tree[name] then
 		self.tree[name] = what
 		what.hardcount = what.hardcount +1
 	end
 end
 
 function dir:unhardlink(name)
-	if self.tree[name] then
+	local self = self.tree
+	if self[name] then
 		self[name].hardcount = self[name].hardcount -1
 		self[name]=nil
 	end
@@ -58,8 +59,13 @@ function dir:rmdir(name)
 end
 
 function dir:destroy() -- __gc ?
-	self:unhardlink("..")
-	self:unhardlink(".") -- useless ?
+	if self:isfile() then
+		-- nothing to do for file
+	else
+		self:unhardlink("..")
+		self:unhardlink(".") -- useless ?
+		assert(self.hardcount == 1)
+	end
 end
 
 function dir:isfile()
@@ -67,7 +73,7 @@ function dir:isfile()
 end
 
 function dir:all(f, ...)
-	if not self:isfile() then -- self is a file, do ... nothing?
+	if self:isfile() then -- self is a file, do ... nothing?
 		--f(...)
 		return
 	end
@@ -99,6 +105,5 @@ function dir:__pairs()
 		return pairs(self.tree)
 	end
 end
-
 
 return setmetatable({}, {__call = function(_, ...) return instance(dir, ...) end})
