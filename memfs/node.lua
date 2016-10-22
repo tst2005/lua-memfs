@@ -1,15 +1,16 @@
 
--- dir.tree[name1].tree[name2]
--- dir(name1)(name2)
+-- node.tree[name1].tree[name2]
+-- node(name1)(name2)
+-- node/name1/name2
 
 local class = require "mini.class"
 local instance = assert(class.instance)
 
--- new root directory	: dir(true)
--- new sub-directory	: dir(parentdir)
--- new file		: dir(false)
+-- new root directory	: node(true)
+-- new sub-directory	: node(parentdir)
+-- new file		: node(false)
 
-local dir;dir = class("dir", {
+local node;node = class("node", {
 	init = function(self, parentdir)
 		assert(parentdir~=nil)
 		if parentdir then -- new [root|sub] directory
@@ -20,19 +21,19 @@ local dir;dir = class("dir", {
 		else -- new file
 			--self.tree = nil
 		end
-		require "mini.class.autometa"(self, dir)
+		require "mini.class.autometa"(self, node)
 	end
 })
 
 -- create a hardlink of <what> named <name> into <self>
-function dir:hardlink(name, what)
+function node:hardlink(name, what)
 	if not self:isfile() and not self.tree[name] then
 		self.tree[name] = what
 		what.hardcount = what.hardcount +1
 	end
 end
 
-function dir:unhardlink(name)
+function node:unhardlink(name)
 	local self = self.tree
 	if self[name] then
 		self[name].hardcount = self[name].hardcount -1
@@ -40,16 +41,16 @@ function dir:unhardlink(name)
 	end
 end
 
-function dir:mkdir(name)
+function node:mkdir(name)
 	if self.tree[name] then
 		error("already exists", 2)
 	end
-	local d = dir(self)
+	local d = node(self)
 	self.tree[name] = d
 	return d
 end
 
-function dir:rmdir(name)
+function node:rmdir(name)
 	if not self.tree[name] then
 		error("not exists", 2)
 	end
@@ -58,7 +59,7 @@ function dir:rmdir(name)
 	return nil
 end
 
-function dir:destroy() -- __gc ?
+function node:destroy() -- __gc ?
 	if self:isfile() then
 		-- nothing to do for file
 	else
@@ -68,11 +69,11 @@ function dir:destroy() -- __gc ?
 	end
 end
 
-function dir:isfile()
+function node:isfile()
 	return not self.tree
 end
 
-function dir:all(f, ...)
+function node:all(f, ...)
 	if self:isfile() then -- self is a file, do ... nothing?
 		--f(...)
 		return
@@ -90,15 +91,15 @@ function dir:all(f, ...)
 	end
 end
 
-function dir:__div(name)
+function node:__div(name)
 	assert(type(name)=="string", "something wrong")
 	assert(not name:find("/"), "path not supported yet, only direct name")
 	return self.tree[name]
 end
 
-dir.__call = dir.__div
+node.__call = node.__div
 
-function dir:__pairs()
+function node:__pairs()
 	if self:isfile() then
 		return function()end
 	else
@@ -106,4 +107,4 @@ function dir:__pairs()
 	end
 end
 
-return setmetatable({}, {__call = function(_, ...) return instance(dir, ...) end})
+return setmetatable({}, {__call = function(_, ...) return instance(node, ...) end})
