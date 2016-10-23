@@ -11,26 +11,28 @@ local instance = assert(class.instance)
 -- new file		: node(false)
 
 local node;node = class("node", {
-	init = function(self, parentdir)
-		assert(parentdir~=nil)
-		if parentdir then -- new [root|sub] directory
-			self.hardcount = 1
-			self.tree = {}
-			self:hardlink(".", self)
-			self:hardlink("..", parentdir==true and self or parentdir)
-		else -- new file
-			--self.tree = nil
-		end
+	init = function(self)
+		-- common stuff
+		self.hardcount = 1
 		require "mini.class.autometa"(self, node)
 	end
 })
 
--- create a hardlink of <what> named <name> into <self>
+function node:isfile()
+	return not self.tree
+end
+function node:isdir()
+	return not self:isfile()
+end
+
+-- create a hardlink of (dir|file)<what> named <name> into (dir)<self>
 function node:hardlink(name, what)
-	if not self:isfile() and not self.tree[name] then
+	assert(self:isdir())
+	assert(not self.tree[name]) -- already exists
+	--if not self.tree[name] then
 		self.tree[name] = what
 		what.hardcount = what.hardcount +1
-	end
+	--end
 end
 
 function node:unhardlink(name)
@@ -41,43 +43,21 @@ function node:unhardlink(name)
 	end
 end
 
-function node:mkdir(name)
-	if self.tree[name] then
-		error("already exists", 2)
-	end
-	local d = node(self)
-	self.tree[name] = d
-	return d
-end
-
-function node:rmdir(name)
-	if not self.tree[name] then
-		error("not exists", 2)
-	end
-	self.tree[name]:destroy()
-	self.tree[name] = nil
-	return nil
-end
-
-function node:destroy() -- __gc ?
-	if self:isfile() then
-		-- nothing to do for file
-	else
-		self:unhardlink("..")
-		self:unhardlink(".") -- useless ?
-		assert(self.hardcount == 1)
-	end
-end
-
-function node:isfile()
-	return not self.tree
-end
-
 function node:all(f, ...)
 	if self:isfile() then -- self is a file, do ... nothing?
 		--f(...)
 		return
 	end
+
+--[[
+local function rprint(k,v, pdir)
+        printdir(k,v,pdir)
+        if type(v)=="table" and k~="." and k~=".." then
+                v:all(rprint, pdir.."/"..k)
+        end
+end
+]]--
+
 	if self.tree["."] then
 		f(".", self.tree["."], ...)
 	end
@@ -91,6 +71,7 @@ function node:all(f, ...)
 	end
 end
 
+--[[
 function node:__div(name)
 	assert(type(name)=="string", "something wrong")
 	assert(not name:find("/"), "path not supported yet, only direct name")
@@ -106,5 +87,7 @@ function node:__pairs()
 		return pairs(self.tree)
 	end
 end
+]]--
 
-return setmetatable({}, {__call = function(_, ...) return instance(node, ...) end})
+return node
+--return setmetatable({node_class=node}, {__call = function(_, ...) return instance(node, ...) end})
