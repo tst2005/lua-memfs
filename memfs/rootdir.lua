@@ -1,20 +1,17 @@
 
-
-
 --[[
 * node -> file
 * node -> dir
  * dir:mkfile()
  * dir:mkdir()
-* node -> dir -> fs
+* node -> dir -> rootdir
 ]]--
+-- new root directory	: `rootdir()`	will internaly call `dir(true)`
+-- new sub-directory	: `dir(parentdir)`
+-- new file		: `file()`
 
 local class = require "mini.class"
 local instance = assert(class.instance)
-
--- new root directory	: node(true)
--- new sub-directory	: node(parentdir)
--- new file		: node(false)
 
 local super = require "memfs.dir"
 

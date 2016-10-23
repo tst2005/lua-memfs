@@ -1,22 +1,20 @@
 
--- node.tree[name1].tree[name2]
--- node(name1)(name2)
--- node/name1/name2
-
 local class = require "mini.class"
 local instance = assert(class.instance)
 
--- new root directory	: node(true)
--- new sub-directory	: node(parentdir)
--- new file		: node(false)
-
 local node;node = class("node", {
 	init = function(self)
-		-- common stuff
 		self.hardcount = 1
 		require "mini.class.autometa"(self, node)
 	end
 })
+--[[
+local node = class("node")
+function node:init()
+	self.hardcount = 1
+	require "mini.class.autometa"(self, node)
+end
+]]--
 
 function node:isfile()
 	return not self.tree
@@ -36,10 +34,9 @@ function node:hardlink(name, what)
 end
 
 function node:unhardlink(name)
-	local self = self.tree
-	if self[name] then
-		self[name].hardcount = self[name].hardcount -1
-		self[name]=nil
+	if self.tree[name] then
+		self.tree[name].hardcount = self.tree[name].hardcount -1
+		self.tree[name]=nil
 	end
 end
 

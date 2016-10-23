@@ -6,10 +6,6 @@
 local class = require "mini.class"
 local instance = assert(class.instance)
 
--- new root directory	: node(true)
--- new sub-directory	: node(parentdir)
--- new file		: node(false)
-
 local super = require"memfs.node"
 local file = require"memfs.file"
 

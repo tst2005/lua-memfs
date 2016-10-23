@@ -57,6 +57,12 @@ assert(r0/"bar"/".." == r0)
 assert(r0/"bar"/"rrr"/"."  == r0 "bar" "rrr")
 assert(r0/"bar"/"rrr"/".." == r0 "bar")
 
+local f1 = r0:mkfile("f1")
+r0:hardlink("f2", f1)
+r0:hardlink("f3", f1)
+local subdir="foo"
+assert(r0/subdir):hardlink("f1x", f1)
+
 
 r0:all(rprint, "")
 print("rmdir rrr")

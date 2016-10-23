@@ -12,9 +12,8 @@ local class_path;class_path = class("path", {
 	end
 })
 
-
 function class_path:chsep(newsep)
-	self.sep = assert(newsep)
+	self.sep = assert(newsep) -- FIXME: check if items contains newsep ?
 	return self
 end
 function class_path:insert(what, where)
