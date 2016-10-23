@@ -8,6 +8,7 @@ local instance = assert(class.instance)
 
 local super = require"memfs.node"
 local file = require"memfs.file"
+--local table_ordered = require"mini.table.writeorder"
 
 local dir;dir = class("dir", {
 	init = function(self, parentdir)
@@ -16,7 +17,7 @@ local dir;dir = class("dir", {
 		assert(parentdir~=nil, "missing argument")
 		assert(parentdir~=false, "invalid argument for new directory")
 		assert(self.hardcount)
-		self.tree = {}
+		self.tree = {} -- table_ordered()
 		self:hardlink(".", self)
 		self:hardlink("..", parentdir==true and self or parentdir)
 
