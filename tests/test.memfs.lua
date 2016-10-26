@@ -1,8 +1,24 @@
 local fs = require "memfs"
-
 local r = fs('/')
-assert(r/"." == r and r/".." == r)
-local aa = r:mkdir("a"):mkdir("aa")
+assert(r:currentdir() =='/')
+assert(r:chdir("/")==true)
+assert(r:_exists("/"))
+do
+	local ok,err = r:_exists("/./nonexistant/1/2/3")
+	assert(not ok and type(err)=="string" and err=="/./nonexistant")
+end
+
+--assert(r/"." == r/"..") -- only for rootdir fs
+--assert(r/"." == r and r/".." == r)
+
+assert(r:mkdir("a")==true) -- => /a
+assert(r:chdir("a")==true) -- / => /a
+assert(r:currentdir()=="/a")
+assert(r:mkdir("aa")==true) -- => /a/aa
+print(r:chdir("aa")) -- /a => /a/aa
+assert(r:currentdir()=="/a/aa")
+os.exit(123)
+
 assert(r/"a"==aa/"..")
 assert(aa/"."==aa)
 

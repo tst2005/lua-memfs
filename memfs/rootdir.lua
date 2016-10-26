@@ -18,12 +18,13 @@ local super = require "memfs.dir"
 local rootdir;rootdir = class("rootdir", {
 	init = function(self)
 		if super.init then super.init(self, true) end
+
 		assert(self.tree)
 		assert(self.tree[".."] == self) -- the parent root directory is him self
 	--	self:hardlink("", self)
 	--	assert(self.tree[""]==self)	-- the "/" directory without the '/' separator is ""
-		
-		require "mini.class.autometa"(self, rootdir)
+
+		--require "mini.class.autometa"(self, rootdir)
 	end
 }, assert(super))
 

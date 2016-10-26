@@ -1,53 +1,200 @@
 
-local function tohex(v, len)
-	return ("0x%"..(len and ("0."..len) or "").."x"):format(string.byte(v,1,-1))
-end
+--local function tohex(v, len)
+--	return ("0x%"..(len and ("0."..len) or "").."x"):format(string.byte(v,1,-1))
+--end
 
 local bool = function(x) return not not x end
 
 local class = require "mini.class"
 local instance = assert(class.instance)
 
-local super = require "memfs.rootdir"
+local rootdir = require "memfs.rootdir"
 local newpath = require "memfs.path"
-
-local fs;fs = class("fs", {
-	init = function(self, sep)
-		if super.init then super.init(self) end
-		self.sep = sep or '/'
-		self.newpath = newpath
-
-	--	self.inode2file = {} -- [inode] = (obj)file
-	--	self.path2file  = {} -- [path] = (obj)file
-		--self.file2paths (1 or N for hardlinks)
-	end,
-}, assert(super))
-
 local string_split = require "mini.string.split"
 
-function fs:exists(path)
-	local tpath = self.newpath(path, self.sep)
-	local cur = self -- the root directory
-	for _i, name in ipairs(tpath.path) do
-		if name ~= "" then
-			cur = cur/name
-			if not cur then
-				return false
-			end
-		end
+local fs;fs = class("fs", {
+	init = function(self, sep, fullfs)
+		self._sep = sep or '/'
+		self._curpath = newpath(self._sep, self._sep)	-- initial pwd is '/'
+
+		self._rootdir = fullfs or instance(rootdir)	-- import or create a new FS
+		self._chroot = self._rootdir			-- by default, there is not chroot, the chroot is the root FS directory
+		self._curdir = self._rootdir			-- the initial pwd is the root FS directory
+
+		require "mini.class.autometa"(self, fs)
+	end,
+})
+
+assert(not fs._newpath)
+function fs:_newpath(s)
+	return newpath(s, self._sep)
+end
+
+assert(not fs.currentdir)
+function fs:currentdir()
+	return tostring(self._curpath)
+end
+assert(not fs.pwd)
+fs.pwd = fs.currentdir
+
+--[[
+-- fs:_getnode {"a","b","c"} <=> fs/"a"/"b"/"c"
+function fs:_getnode(t)
+	if type(t) == "string" then
+		t = {t}
 	end
+	assert(type(t)=="table", "argument must be a table")
+        local cur = self.chroot
+        for i, name in ipairs(t) do
+	        assert(type(name)=="string", "something wrong, want string got "..type(name))
+	        assert(not name:find(self._sep, true), "name must not contains directory separator")
+                if name ~= "" then
+                        local try
+			if (name == ".." and cur == self._chroot) then -- chroot stuff
+				try = cur -- do not go outside the chroot !
+			elseif not cur.tree then
+				return false, i, "not a directory"
+			else
+                        	try = cur.tree[name]
+			end
+                        if not try then
+                                return false, i, "no such file/directory"
+                        end
+                        cur=try
+                end
+        end
+        return cur
+end
+-- fs/"a"/"b"/"c" <=> fs:_getnode {"a","b","c"} <=> fs/{"a","b","c"}
+fs.__div = fs._getnode
+]]--
+
+assert(not fs._exists)
+-- fs:_exists(<s_path>)  <s_path> should be absolute or relative to self._curpath
+function fs:_exists(s_path)
+	-- solution 1: Always resolve an absolute path from the chrootdir
+
+	-- parse the path (got an absolute or relative path)
+	local abs_path = newpath(s_path, self._sep):toabs(self._curpath, true) -- convert it to an absolute path (if not already the case)
+	assert(abs_path:isabs())
+
+	-- recursively move on each abs_path's directories
+	assert(type(abs_path.path)=="table")
+	local node, i, msg = self._chroot:getnode(abs_path.path) -- self._chroot/abs_path.path
+	if not node then -- if fail
+		-- show the path until the failed part
+		return nil, abs_path:concat(abs_path.sep, 1, assert(type(i)=="number" and i)), msg
+	end
+	return node -- if success then return the targeted object
+end
+--	-- resolv the path from the current directory (self._curdir) or from the chroot directory
+--	local cur
+--	if not o_path:isabs() then
+--		cur = self._chroot -- absolute path will be resolved from the chrooted directory
+--		abs_o_path = o_path
+--	else
+--		 -- relative path will be resolved from the current directory
+--		-- resolve the wanted path to an absolute path
+--	end
+
+assert(not fs._setchroot)
+function fs:_setchroot(newroot)
+	self._chroot = assert(newroot)
+	self._curdir = assert(newroot)
+	self._curpath = newpath(self._sep, self._sep)
+end
+
+assert(not fs.chroot)
+function fs:chroot(s_path)
+	local ok, err = self:chdir(s_path)
+	if not ok then
+		return nil, "can not chdir to"..err
+	end
+	self:_setchroot(self._curdir)
 	return true
 end
+
+function fs:chdir(s_path)
+	local node, err = self:_exists(s_path)
+	if not node then
+		return nil, "no such directory: "..err
+	end
+	if not node:isdir() or node:isfile() then -- FIXME: take care about symlink to directory!
+		return nil, "path is not a directory: "..s_path
+	end
+	self._curdir = assert(node)
+	return true
+end
+
+--function fs:__div(path)
+--	return self:cd(path)
+--end
+
+function fs:mkdir(s_path)
+	local o_path = self:_newpath(s_path, self._sep)
+	local node, err = self:_exists(o_path:dirname())
+	local name = o_path:basename()
+	assert(name~="." and name~="..")
+	local ok, err = pcall(function() return node:mkdir(name) end)
+	if not ok then return nil, err end
+	return true
+end
+
+return setmetatable({}, {__call = function(_, ...) return instance(fs, ...) end})
+
+--[=[
+lfs.currentdir()
+lfs.chdir(path)
+lfs.mkdir(dirname)
+lfs.rmdir(dirname)
+
+
+lfs.attributes (filepath [, aname | atable])
+dev
+ino
+mode
+nlink
+uid
+gid
+rdev
+access
+modification
+change
+size
+permissions
+blocks
+blksize
+
+fs.symlinkattributes(filepath [, aname])
+
+liter, dir_obj = lfs.dir(path)
+function fs:__pairs()
+        if self:isfile() then
+                return function()end
+        else
+                return pairs(self.tree) -- /!\ chroot evasion ?
+        end
+end
+
+lfs.link(old, new[, symlink])
+lfs.setmode(file, mode)
+lfs.touch(filepath [, atime [, mtime] ])
+
+lfs.lock(filehandle, mode[, start[, length] ])
+lfs.lock_dir(path, [seconds_stale])
+lfs.unlock(filehandle[, start[, length]])
+]=]--
+
 --[[
 fs.mkdir = function(dir)
-fs.rmdir = function(dir, recursive)
+fs.rmdir = function(dir, recursive)  -- /!\ refuse to remove "." or ".."
 
 fs.copy = function(fromfile, tofile)
 fs.move = function(fromfile, tofile)
 fs.rename = function(file, newname)
 
 fs.create = function(file)
-fs.remove = function(file)
+fs.remove = function(file) -- /!\ enforce check of node type, do not remove ".." (chroot evasion?)
 
 fs.write = function(file, data)
 fs.append = function(file, data)
@@ -83,9 +230,8 @@ fs.separator = function()	-- dirsep
 --fs.system = function(unixtype) -- os.arch ?
 ]]--
 
-return setmetatable({}, {__call = function(_, ...) return instance(fs, ...) end})
 
---[[[
+--[[
 local function read_header_block(block)
 	local funcs = {}										    -- SIZE
 	funcs.rawname		= function(self) return nullterm(block:sub(1,100))			end -- 100

@@ -25,27 +25,6 @@ local dir;dir = class("dir", {
 	end
 }, assert(super))
 
---[[
--- create a hardlink of (dir|file)<what> named <name> into (dir)<self>
-function dir:hardlink(name, what)
-	assert(self:isdir())
-	assert(self.tree[name]) -- already exists
-	--if not self.tree[name] then
-		self.tree[name] = what
-		what.hardcount = what.hardcount +1
-	--end
-end
-assert(not super.hardlink)
-function dir:unhardlink(name)
-	local self = self.tree
-	if self[name] then
-		self[name].hardcount = self[name].hardcount -1
-		self[name]=nil
-	end
-end
-assert(not super.unhardlink)
-]]--
-
 function dir:mkdir(name)
 	if self.tree[name] then
 		error("already exists", 2)
@@ -82,29 +61,9 @@ end
 assert(not super.mkfile)
 
 --[[
-function dir:all(f, ...)
-	if self:isfile() then -- self is a file, do ... nothing?
-		--f(...)
-		return
-	end
-	if self.tree["."] then
-		f(".", self.tree["."], ...)
-	end
-	if self.tree[".."] then
-		f("..", self.tree[".."], ...)
-	end
-	for k,v in pairs(self.tree) do
-		if k~="." and k~=".." then
-			f(k, v, ...)
-		end
-	end
-end
-assert(not super.all)
-]]--
-
 function dir:__div(name)
-	assert(type(name)=="string", "something wrong")
-	assert(not name:find("/"), "path not supported yet, only direct name")
+	assert(type(name)=="string", "something wrong, want string got "..type(name))
+	--assert(not name:find("/"), "path not supported yet, only direct name")
 	return self.tree[name]
 end
 assert(not super.__div)
@@ -120,6 +79,21 @@ function dir:__pairs()
 	end
 end
 assert(not super.__pairs)
+]]--
+
+-- dirgetnode({"a","b"}) <=> dir/"a"/"b"
+function dir:getnode(t)
+	local cur = self
+	for i, name in ipairs(t) do
+		if name ~= "" then
+			local try = cur/name
+			if not try then
+				return false, i
+			end
+			cur=try
+		end
+	end
+	return cur
+end
 
 return dir
---return setmetatable({}, {__call = function(_, ...) return instance(dir, ...) end})

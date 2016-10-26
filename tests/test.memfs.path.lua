@@ -32,4 +32,27 @@ assert(
 	== "a;b;c;d;e"
 )
 
+-- test clone
+assert( type(p)=="table" and p:clone() ~= p)
+
+local P=function(p) return path(p, '/') end
+local a, r = "/a/b/s", "r/e/l"
+local pa = P(a)
+local pr = P(r)
+--[[
+assert( tostring( pa:join(pr)) == a.."/"..r)
+assert( tostring( pr:join(pr)) == r.."/"..r)
+assert( tostring( pa:join(pa)) == a)
+assert( tostring( pr:join(pa)) == a)
+]]--
+
+assert( tostring( P(r):toabs(P("/1/2/3")) ) == "/1/2/3".."/"..r)
+assert( tostring( P(a):toabs(P("/1/2/3")) ) == a)
+assert( tostring( P('/'):toabs(P("/1/2/3")) ) == '/')
+assert( tostring( P('b/c'):toabs(P("/"))) == "/b/c" )
+assert( tostring( P('b/c'):toabs(P("/a"))) == "/a/b/c" )
+assert( tostring( P('b/c'):toabs(P("/a/"))) == "/a/b/c" )
+
+assert( tostring( P(r):toabs(P("/"))) == "/"..r)
+
 print("OK")

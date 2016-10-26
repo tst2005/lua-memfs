@@ -1,5 +1,6 @@
 
 local string_split = require "mini.string.split"
+local shallowcopy = require "mini.table.shallowcopy"
 
 local class = require "mini.class"
 local instance = assert(class.instance)
@@ -7,13 +8,32 @@ local instance = assert(class.instance)
 local class_path;class_path = class("path", {
 	init = function(self, p, sep)
 		self.sep = sep or '/'
-		self.path = string_split(p or ".", self.sep)
+		if not p then
+			self.path = {"."}
+		elseif type(p) == "table" then -- FIXME: find a better way to check if p is a path
+			self.path = shallowcopy(p.path or p) -- import the splitted path ; or, import the table content
+		elseif type(p) == "string" then
+			self.path = string_split(p or ".", self.sep)
+		end
+		assert(self.path, "invalid path argument")
 		require "mini.class.autometa"(self, class_path)
 	end
 })
 
+function class_path:isabs()
+	return self.path[1]==""
+end
+
+function class_path:isrel()
+	return not self:isabs()
+end
+
 function class_path:chsep(newsep)
 	self.sep = assert(newsep) -- FIXME: check if items contains newsep ?
+	return self
+end
+function class_path:append(what)
+	table.insert(self.path, what)
 	return self
 end
 function class_path:insert(what, where)
@@ -55,28 +75,64 @@ function class_path:basename(ext)
 	return self.path[#self.path]
 end
 
-function class_path:join(path2)
-	error("TODO: not implemented yet")
-	assert(self.sep == path2.sep)
-	return instance(class_path, tostring(self)..self.sep..tostring(path2), self.sep)
+function class_path:clone()
+	local new = instance(class_path, nil, self.sep)
+	--update(self,new) -- copy missing fields ?
+	new.path = shallowcopy(self.path)
+	assert(new.sep == self.sep)
+	return new
 end
 
-function class_path:isabs()
-	return self.path[1]==""
+-- *    + abs2 = abs2
+-- rel1 + rel2 = rel1/rel2
+-- abs1 + rel2 = abs1/rel2
+--[[
+function class_path:join(suffixpath, inplace)
+	if suffixpath:isabs() then
+		return suffixpath:clone()
+	end
+	assert(self.sep == suffixpath.sep) -- same separator ?
+	local new = inplace and self	-- no clone
+		or self:clone()		-- clone
+	for i, v in ipairs(suffixpath.path) do
+	--	if i > 1 or v~= "" then
+			new:append(v)
+	--	end
+	end
+	return new
+end
+]]--
+
+-- /   + b/c => /a/b
+-- /a  + b/c => /a/b/c
+-- /a/ + b/c => /a/b/c
+-- convert a path to an absolute path
+function class_path:toabs(prefixpath, inplace)
+	if self:isabs() then
+		return inplace and self or self:clone()
+	end
+	assert(self.sep == prefixpath.sep) -- same separator ?
+	local abs = inplace and prefixpath or prefixpath:clone()
+	if abs.path[#abs.path]=="" then
+		-- drop the last empty item to avoid dual separator
+		abs.path[#abs.path]=nil
+	end
+	for i, v in ipairs(self.path) do
+		abs:append(v)
+	end
+	assert(abs:isabs())
+	return abs
 end
 
 function class_path:__tostring()
 	return table.concat(self.path, self.sep)
 end
-
-class_path.tostring = class_path.__tostring
-
+class_path.tostring = assert(class_path.__tostring)
 
 function class_path:concat(sep, i, j)
 	sep = sep or self.sep
 	return table.concat(self.path, sep, i, j)
 end
-	
 
 -- a////b => a/b
 -- a/./b  => a/b
@@ -100,51 +156,6 @@ function class_path:normpath(path)
 		:gsub("^%./(.+)$", "%1")	-- if "./something" keep "something"
 	)
 end
-]]--
-
---[[
-fs.mkdir = function(dir)
-fs.rmdir = function(dir, recursive)
-
-fs.copy = function(fromfile, tofile)
-fs.move = function(fromfile, tofile)
-fs.rename = function(file, newname)
-
-fs.create = function(file)
-fs.remove = function(file)
-
-fs.write = function(file, data)
-fs.append = function(file, data)
--- fs.touch => fs.append(file, "") ou fs.update(file, now(), now()) ?
-fs.read = function(file)
-
-fs.appendcopy = function(fromfile, tofile)
-fs.appendmove = function(fromfile, tofile)
-fs.update = function(file, accesstime, modificationtime)
-
--- file meta info
-fs.size = function(file)
-fs.permissions = function(file)
-fs.device = function(file)
-fs.type = function(file)
-fs.uid = function(file)
-fs.gid = function(file)
-fs.accesstime = function(file)		-- getatime
-fs.modificationtime = function(file)	-- getmtime
-fs.changetime = function(file)		-- getctime
-
-fs.tmpname = function(length, prefix, suffix)
-fs.files = function(dir, fullpath)
-
-fs.link = function(file, link)		-- link
--- missing: unlink
-fs.symlink = function(file, link)
-
-fs.usetmp = function(length, prefix, suffix, call, dir)
-fs.usetmpdir = function(length, prefix, suffix, call)
-
-fs.separator = function()	-- dirsep
---fs.system = function(unixtype) -- os.arch ?
 ]]--
 
 return setmetatable({}, {__call = function(_, ...) return instance(class_path, ...) end})

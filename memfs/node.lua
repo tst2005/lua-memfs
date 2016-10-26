@@ -45,7 +45,6 @@ function node:all(f, ...)
 		--f(...)
 		return
 	end
-
 --[[
 local function rprint(k,v, pdir)
         printdir(k,v,pdir)
@@ -54,7 +53,6 @@ local function rprint(k,v, pdir)
         end
 end
 ]]--
-
 	if self.tree["."] then
 		f(".", self.tree["."], ...)
 	end
@@ -68,15 +66,32 @@ end
 	end
 end
 
---[[
-function node:__div(name)
-	assert(type(name)=="string", "something wrong")
-	assert(not name:find("/"), "path not supported yet, only direct name")
-	return self.tree[name]
+-- node:getnode{"a","b","c"} <=> node/"a"/"b"/"c"
+function node:getnode(t)
+	if type(t) == "string" then
+		t = {t}
+	end
+	assert(type(t)=="table", "argument must be a table")
+        local cur = self
+        for i, name in ipairs(t) do
+	        assert(type(name)=="string", "something wrong, want string got "..type(name))
+                if name ~= "" then
+			if not cur.tree then
+				return false, i, "not a directory"
+			end
+                        local try = cur.tree[name]
+                        if not try then
+                                return false, i, "no such file/directory"
+                        end
+                        cur=try
+                end
+        end
+        return cur
 end
+-- node/"a"/"b"/"c" <=> node:getnode {"a","b","c"} <=> node/{"a","b","c"}
+node.__div = assert(node.getnode)
 
-node.__call = node.__div
-
+--[[
 function node:__pairs()
 	if self:isfile() then
 		return function()end

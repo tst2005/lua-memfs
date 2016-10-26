@@ -10,6 +10,7 @@ local file;file = class("file", {
 
 		assert(self.hardcount)
 		assert(self.isfile and self.isdir and self.hardlink and self.unhardlink)
+		assert(not self.tree)
 
 		require "mini.class.autometa"(self, file)
 	end
@@ -26,10 +27,10 @@ function file:__div(name)
 	return self.tree[name]
 end
 file.__call = file.__div
-]]--
 
 function file:__pairs()
 	return function()end
 end
+]]--
 
 return setmetatable({}, {__call = function(_, ...) return instance(file, ...) end})
