@@ -8,22 +8,28 @@ local bool = function(x) return not not x end
 local class = require "mini.class"
 local instance = assert(class.instance)
 
-local rootdir = require "memfs.rootdir"
+local dir = require "memfs.dir"
+
+local newrootdir = function()
+	local rootdir = dir(true)
+	assert(rootdir.tree)
+	assert(rootdir.tree[".."] == rootdir) -- the parent root directory is him self
+	return rootdir
+end
 local newpath = require "memfs.path"
 local string_split = require "mini.string.split"
 
-local fs;fs = class("fs", {
-	init = function(self, sep, fullfs)
-		self._sep = sep or '/'
-		self._curpath = newpath(self._sep, self._sep)	-- initial pwd is '/'
+local fs = class("fs")
+function fs:init(sep, fullfs)
+	self._sep = sep or '/'
+	self._curpath = newpath(self._sep, self._sep)	-- initial pwd is '/'
 
-		self._rootdir = fullfs or instance(rootdir)	-- import or create a new FS
-		self._chroot = self._rootdir			-- by default, there is not chroot, the chroot is the root FS directory
-		self._curdir = self._rootdir			-- the initial pwd is the root FS directory
+	self._rootdir = fullfs or newrootdir()		-- import or create a new FS
+	self._chroot = self._rootdir			-- by default, there is not chroot, the chroot is the root FS directory
+	self._curdir = self._rootdir			-- the initial pwd is the root FS directory
 
-		require "mini.class.autometa"(self, fs)
-	end,
-})
+	require "mini.class.autometa"(self, fs)
+end
 
 assert(not fs._newpath)
 function fs:_newpath(s)
@@ -34,6 +40,7 @@ assert(not fs.currentdir)
 function fs:currentdir()
 	return tostring(self._curpath)
 end
+
 assert(not fs.pwd)
 fs.pwd = fs.currentdir
 

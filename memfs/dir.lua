@@ -47,18 +47,20 @@ function dir:rmdir(name)
 	if not self.tree[name] then
 		error("not exists", 2)
 	end
-	self.tree[name]:destroy()
+	self:unhardlink("..")
+	--self:unhardlink(".") -- useless ?
 	self.tree[name] = nil
 	return nil
 end
-assert(not super.mkfile)
+assert(not super.rmdir)
 
+--[[
 function dir:destroy() -- __gc ?
-	self:unhardlink("..")
 	self:unhardlink(".") -- useless ?
 	assert(self.hardcount == 1)
 end
-assert(not super.mkfile)
+assert(not super.destroy)
+]]--
 
 --[[
 function dir:__div(name)

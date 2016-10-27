@@ -33,4 +33,4 @@ function file:__pairs()
 end
 ]]--
 
-return setmetatable({}, {__call = function(_, ...) return instance(file, ...) end})
+return file

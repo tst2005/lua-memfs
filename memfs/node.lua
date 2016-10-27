@@ -23,21 +23,39 @@ function node:isdir()
 	return not self:isfile()
 end
 
--- create a hardlink of (dir|file)<what> named <name> into (dir)<self>
+-- create a hardlink of a (file)<what> named <name> into (dir)<self>
 function node:hardlink(name, what)
-	assert(self:isdir())
-	assert(not self.tree[name]) -- already exists
-	--if not self.tree[name] then
-		self.tree[name] = what
-		what.hardcount = what.hardcount +1
-	--end
+	assert(self:isdir(), "must be a directory")
+	assert(name=="." or name==".." or what:isfile(), "only hardlink of file is supported")
+	if self.tree[name] then -- already exists
+		return nil
+	end
+	self.tree[name] = what
+	what.hardcount = what.hardcount +1
+	return true	
+end
+
+-- create a [hard]link of (file)<self> in (dir)<where>/<name>
+function node:link(where, name, symlink)
+	assert(symlink==nil, "symlink not yet implemented")
+
+	assert(where:isdir(), "must be a directory")
+	assert(name=="." or name==".." or what:isfile(), "only hardlink of file is supported")
+	if where/name then -- already exists
+		return nil, "already exists"
+	end
+	where.tree[name] = self
+	self.hardcount = self.hardcount +1
+	return true
 end
 
 function node:unhardlink(name)
-	if self.tree[name] then
-		self.tree[name].hardcount = self.tree[name].hardcount -1
-		self.tree[name]=nil
+	if not self.tree[name] then
+		return nil
 	end
+	self.tree[name].hardcount = self.tree[name].hardcount -1
+	self.tree[name]=nil
+	return true
 end
 
 function node:all(f, ...)
@@ -102,4 +120,3 @@ end
 ]]--
 
 return node
---return setmetatable({node_class=node}, {__call = function(_, ...) return instance(node, ...) end})
