@@ -1,20 +1,19 @@
+local asserttype = require "mini.asserttype"
 
 local class = require "mini.class"
 local instance = assert(class.instance)
 
-local node;node = class("node", {
-	init = function(self)
-		self.hardcount = 1
-		require "mini.class.autometa"(self, node)
-	end
-})
---[[
 local node = class("node")
 function node:init()
-	self.hardcount = 1
+	self._hardcount = 1
 	require "mini.class.autometa"(self, node)
 end
-]]--
+
+function node:hardcountincr(n)
+	asserttype(n, "number", "node:hardcountincr: argument #1 must be a number", 2)
+	asserttype(self._hardcount, "number", "node:hardcountincr: internal error: _hardcount is not a number!")
+	self._hardcount = self._hardcount + n
+end
 
 function node:isfile()
 	return not self.tree
@@ -31,13 +30,13 @@ function node:hardlink(name, what)
 		return nil
 	end
 	self.tree[name] = what
-	what.hardcount = what.hardcount +1
+	what:hardcountincr(1)
 	return true	
 end
 
 -- create a [hard]link of (file)<self> in (dir)<where>/<name>
-function node:link(where, name, symlink)
-	assert(symlink==nil, "symlink not yet implemented")
+function node:link(where, name, as_symlink)
+	assert(as_symlink==nil, "symlink not yet implemented")
 
 	assert(where:isdir(), "must be a directory")
 	assert(name=="." or name==".." or what:isfile(), "only hardlink of file is supported")
@@ -45,7 +44,7 @@ function node:link(where, name, symlink)
 		return nil, "already exists"
 	end
 	where.tree[name] = self
-	self.hardcount = self.hardcount +1
+	self:hardcountincr(1)
 	return true
 end
 
@@ -53,7 +52,7 @@ function node:unhardlink(name)
 	if not self.tree[name] then
 		return nil
 	end
-	self.tree[name].hardcount = self.tree[name].hardcount -1
+	self.tree[name]:hardcountincr(-1)
 	self.tree[name]=nil
 	return true
 end
@@ -65,10 +64,10 @@ function node:all(f, ...)
 	end
 --[[
 local function rprint(k,v, pdir)
-        printdir(k,v,pdir)
-        if type(v)=="table" and k~="." and k~=".." then
-                v:all(rprint, pdir.."/"..k)
-        end
+	printdir(k,v,pdir)
+	if type(v)=="table" and k~="." and k~=".." then
+		v:all(rprint, pdir.."/"..k)
+	end
 end
 ]]--
 	if self.tree["."] then
@@ -85,29 +84,31 @@ end
 end
 
 -- node:getnode{"a","b","c"} <=> node/"a"/"b"/"c"
+-- node/"a"/"b"/"c" <=> node:getnode {"a","b","c"} <=> node/{"a","b","c"}
 function node:getnode(t)
 	if type(t) == "string" then
 		t = {t}
 	end
 	assert(type(t)=="table", "argument must be a table")
-        local cur = self
-        for i, name in ipairs(t) do
-	        assert(type(name)=="string", "something wrong, want string got "..type(name))
-                if name ~= "" then
+	local cur = self
+	for i, name in ipairs(t) do
+		asserttype(name, "string", "something wrong, want string got "..type(name), 2)
+		if name ~= "" then
 			if not cur.tree then
 				return false, i, "not a directory"
 			end
-                        local try = cur.tree[name]
-                        if not try then
-                                return false, i, "no such file/directory"
-                        end
-                        cur=try
-                end
-        end
-        return cur
+			local try = cur.tree[name]
+			if not try then
+				return false, i, "no such file/directory"
+			end
+			cur=try
+		end
+	end
+	return cur
 end
--- node/"a"/"b"/"c" <=> node:getnode {"a","b","c"} <=> node/{"a","b","c"}
-node.__div = assert(node.getnode)
+function node:get(name)
+	return cur.tree[name]
+end
 
 --[[
 function node:__pairs()

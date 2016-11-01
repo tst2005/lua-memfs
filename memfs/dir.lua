@@ -3,40 +3,77 @@
 -- node(name1)(name2)
 -- node/name1/name2
 
+local asserttype = require "mini.asserttype"
+
 local class = require "mini.class"
 local instance = assert(class.instance)
 
 local super = require"memfs.node"
 local file = require"memfs.file"
---local table_ordered = require"mini.table.writeorder"
+local tree = require "memfs.tree"
 
-local dir;dir = class("dir", {
-	init = function(self, parentdir)
-		if super.init then super.init(self) end
+local dir = class("dir", nil, assert(super))
+function dir:init(parentdir)
+	if super.init then super.init(self) end
 
-		assert(parentdir~=nil, "missing argument")
-		assert(parentdir~=false, "invalid argument for new directory")
-		assert(self.hardcount)
-		self.tree = {} -- table_ordered()
-		self:hardlink(".", self)
-		self:hardlink("..", parentdir==true and self or parentdir)
+	assert(parentdir~=nil, "missing argument")
+	assert(parentdir~=false, "invalid argument for new directory")
+	asserttype(self._hardcount, "number")
+	asserttype(self.hardcountincr, "function")
 
-		require "mini.class.autometa"(self, dir)
+	self.tree = tree()
+
+	self:hardlink(".", self)
+
+	if parentdir == true then
+		self:becomerootdir()
+	elseif parentdir then
+		asserttype(parentdir, "table", "invalid parentdir", 2)
+		self:link("..", parentdir)
 	end
-}, assert(super))
 
-function dir:mkdir(name)
+	require "mini.class.autometa"(self, dir)
+end
+
+function dir:becomerootdir()
+	self:link("..", self)
+	return self
+end
+function dir:isorphan()
+	return self.tree[".."]==nil
+end
+function dir:link(name, item)
+	asserttype(name,  "string", "link: invalid directory name",  2)
+	asserttype(item, "table",   "link: invalid item", 2)
 	if self.tree[name] then
 		error("already exists", 2)
 	end
-	local d = instance(dir,self)
-	self.tree[name] = d
-	return d
+	self.tree[name] = item
+	item:hardcountincr(1)
+end
+function dir:unlink(name)
+	local item = self.tree[name]
+	if not item then
+		return nil
+	end
+	item:hardcountincr(-1)
+	self.tree[name] = nil
+end
+
+function dir:mkdir(name)
+	asserttype(name, "string", "must be a string", 2)
+	if self.tree[name] then
+		error("already exists", 2)
+	end
+	local child = instance(dir,self)
+	self.tree[name] = child
+	return child
 end
 assert(not super.mkdir)
 
 -- create a new file named <named> into (dir)<self>
 function dir:mkfile(name)
+	asserttype(name, "string", "must be a string", 2)
 	local f = instance(file)
 	self.tree[name] = f
 	return f
@@ -44,6 +81,7 @@ end
 assert(not super.mkfile)
 
 function dir:rmdir(name)
+	asserttype(name, "string", "must be a string", 2)
 	if not self.tree[name] then
 		error("not exists", 2)
 	end
@@ -62,14 +100,13 @@ end
 assert(not super.destroy)
 ]]--
 
---[[
 function dir:__div(name)
-	assert(type(name)=="string", "something wrong, want string got "..type(name))
-	--assert(not name:find("/"), "path not supported yet, only direct name")
+	asserttype(name, "string", "something wrong, want string got "..type(name), 2)
 	return self.tree[name]
 end
 assert(not super.__div)
 
+--[[
 dir.__call = dir.__div
 assert(not super.__call)
 
@@ -85,6 +122,7 @@ assert(not super.__pairs)
 
 -- dirgetnode({"a","b"}) <=> dir/"a"/"b"
 function dir:getnode(t)
+	asserttype(t, "table", "must be a table", 2)
 	local cur = self
 	for i, name in ipairs(t) do
 		if name ~= "" then

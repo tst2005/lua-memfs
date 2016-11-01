@@ -4,33 +4,26 @@ local instance = assert(class.instance)
 
 local super = require"memfs.node"
 
-local file;file = class("file", {
-	init = function(self)
-		if super.init then super.init(self) end
+local file = class("file", nil, assert(super))
+function file:init(self)
+	if super.init then super.init(self) end
 
-		assert(self.hardcount)
-		assert(self.isfile and self.isdir and self.hardlink and self.unhardlink)
-		assert(not self.tree)
+	assert(self._hardcount)
+	assert(self.hardcountincr)
+	assert(self.isfile and self.isdir and self.hardlink and self.unhardlink)
+	assert(not self.tree)
 
-		require "mini.class.autometa"(self, file)
-	end
-}, assert(super))
+	require "mini.class.autometa"(self, file)
+end
 
 function file:destroy() -- __gc ?
 	-- nothing to do for file
 end
 
 --[[
-function file:__div(name)
-	assert(type(name)=="string", "something wrong")
-	assert(not name:find("/"), "path not supported yet, only direct name")
-	return self.tree[name]
-end
+function file:__div(name) end
 file.__call = file.__div
-
-function file:__pairs()
-	return function()end
-end
+function file:__pairs() end
 ]]--
 
 return file

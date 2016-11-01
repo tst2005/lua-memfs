@@ -1,13 +1,13 @@
 
 local string_split = require "mini.string.split"
 local shallowcopy = require "mini.table.shallowcopy"
-
+local asserttype = require "mini.asserttype"
 local class = require "mini.class"
 local instance = assert(class.instance)
 
 local class_path;class_path = class("path", {
 	init = function(self, p, sep)
-		self.sep = sep or '/'
+		self.sep = asserttype(sep or '/', "string", "separator must be a string", 2)
 		if not p then
 			self.path = {"."}
 		elseif type(p) == "table" then -- FIXME: find a better way to check if p is a path
@@ -72,8 +72,26 @@ function class_path:dirname()
 end
 function class_path:basename(ext)
 	assert(not ext, "basename: ext is not implemented yet")
+--[[	local v = ""
+	for i=#self.path,1,-1 do
+		if v~= then break end
+		v=self.path[i]
+	end
+]]--
+--[[	for _i,v in ipairs(ripairs(self.path)) do
+		if v~="" then
+			return v
+		end
+	end
+]]--
 	return self.path[#self.path]
 end
+
+-- $ dirname  /a///////b////// => /a
+-- $ basename /a///////b////// => b
+-- $ dirname //a///b////c      => //a///b
+-- dirname: 1) remove //*[^/]+/*$ 2) re
+
 
 function class_path:clone()
 	local new = instance(class_path, nil, self.sep)
