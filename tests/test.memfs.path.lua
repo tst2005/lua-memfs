@@ -1,5 +1,15 @@
 local path = require "memfs.path"
 
+---- extname ----
+assert( path("/a/b/c.x"):extname()		== ".x")
+assert( path("/a/b/.file.ext"):extname()	== ".ext")
+assert( path("index.html"):extname()		== ".html")
+assert( path('index.coffee.md'):extname()	== ".md")
+assert( path('index.'):extname()		== "." )
+assert( path('index'):extname()			== "" )
+assert( path('.index'):extname()		== "" )
+
+
 local p = path("/a/b/c.x")
 assert( tostring(p) == "/a/b/c.x" )
 assert( p:dirname() == "/a/b" )

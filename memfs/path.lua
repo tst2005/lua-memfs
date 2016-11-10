@@ -20,6 +20,7 @@ local class_path;class_path = class("path", {
 	end
 })
 
+-- isAbsolute https://nodejs.org/docs/latest/api/path.html#path_path_isabsolute_path
 function class_path:isabs()
 	return self.path[1]==""
 end
@@ -87,6 +88,12 @@ function class_path:basename(ext)
 	return self.path[#self.path]
 end
 
+-- https://nodejs.org/docs/latest/api/path.html#path_path_extname_path
+function class_path:extname()
+	local filename = self.path[#self.path]
+	return filename:find("[^.]%.") and filename:match(".*(%.[^.]*)$") or ""
+end
+
 -- $ dirname  /a///////b////// => /a
 -- $ basename /a///////b////// => b
 -- $ dirname //a///b////c      => //a///b
@@ -152,6 +159,8 @@ function class_path:concat(sep, i, j)
 	return table.concat(self.path, sep, i, j)
 end
 
+
+-- https://nodejs.org/docs/latest/api/path.html#path_path_normalize_path
 -- a////b => a/b
 -- a/./b  => a/b
 -- a/x/../b => a/b (disabled)
@@ -176,4 +185,13 @@ function class_path:normpath(path)
 end
 ]]--
 
-return setmetatable({}, {__call = function(_, ...) return instance(class_path, ...) end})
+-- parse(p) https://nodejs.org/docs/latest/api/path.html#path_path_parse_path
+function class_path:parse(p)
+	return instance(class_path, p)
+end
+
+local function new(p)
+	return instance(class_path, p)
+end
+
+return setmetatable({parse=new}, {__call = function(_, ...) return instance(class_path, ...) end})
